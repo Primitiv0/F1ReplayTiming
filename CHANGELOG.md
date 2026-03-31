@@ -2,11 +2,46 @@
 
 All notable changes to F1 Replay Timing will be documented in this file.
 
+## 2.0.0
+
+### Migrating from v1.x
+
+The Docker image has changed. The old `f1replaytiming-backend` and `f1replaytiming-frontend` images will no longer receive updates. The new image is `ghcr.io/adn8naiagent/f1replaytiming:latest` (single unified image).
+
+To migrate:
+1. Pull the new image: `docker pull ghcr.io/adn8naiagent/f1replaytiming:latest`
+2. Copy `.env.example` to `.env` and configure (most defaults work out of the box)
+3. Replace your `docker-compose.yml` with the one from the repo. It's now a single service on one port
+4. `docker compose up`
+
+You no longer need `NEXT_PUBLIC_API_URL`, `FRONTEND_URL`, or any CORS settings. Your session data volume carries over as-is, no reprocessing needed.
+
+### Breaking Changes
+- **Single container architecture** — frontend and backend are now merged into a single Docker container serving everything from one port. The separate frontend and backend containers have been removed
+- **Simplified configuration** — all config is now in a single `.env` file. `NEXT_PUBLIC_API_URL`, `FRONTEND_URL`, and CORS configuration are no longer needed
+- **Static frontend** — Next.js switched from `output: 'standalone'` to `output: 'export'`, producing static HTML/CSS/JS served by FastAPI. No Node.js runtime in the final image
+- **URL format change** — dynamic routes (`/replay/2026/5`) replaced with query parameters (`/replay?year=2026&round=5&type=R`). Old URLs redirect automatically
+
+### Improvements
+- **No CORS** — frontend and API are the same origin, eliminating all cross-origin issues
+- **Reverse proxy friendly** — single port means Traefik, nginx, and Cloudflare tunnels just work with no special configuration
+- **WebSocket reliability** — same-origin WebSocket connections no longer break behind TLS termination or mixed protocol proxies
+- **Screen wake lock** — prevents screen dimming and device sleep during replay playback and live sessions
+
+---
+
+## 1.3.2.2
+
+### Fixes
+- **Replay timing drift** — replaced fixed-duration sleeps with wall-clock-anchored playback to prevent timing drift during sessions (contributed by [@stephenwilley](https://github.com/stephenwilley))
+
+---
+
 ## 1.3.2.1
 
 ### Fixes
 - **Lap analysis lap number** — fixed showing incomplete current lap data; now only displays completed laps
-- **Mobile lap analysis scroll** — section is now scrollable on mobile
+
 
 ---
 
