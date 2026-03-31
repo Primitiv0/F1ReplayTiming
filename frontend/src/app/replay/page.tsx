@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
 import { useReplaySocket } from "@/hooks/useReplaySocket";
 import { useSettings } from "@/hooks/useSettings";
@@ -42,11 +42,15 @@ interface SessionData {
 }
 
 export default function ReplayPage() {
-  const params = useParams();
   const searchParams = useSearchParams();
-  const year = Number(params.year);
-  const round = Number(params.round);
+  const year = Number(searchParams.get("year"));
+  const round = Number(searchParams.get("round"));
   const sessionType = searchParams.get("type") || "R";
+
+  if (!year || !round) {
+    if (typeof window !== "undefined") window.location.href = "/";
+    return null;
+  }
 
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [showTelemetry, setShowTelemetry] = useState(false);
@@ -210,6 +214,25 @@ export default function ReplayPage() {
   }, [lapsResponse]);
 
   const replay = useReplaySocket(year, round, sessionType);
+
+  // Wake Lock — prevent screen sleep during playback
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  useEffect(() => {
+    if (replay.playing && "wakeLock" in navigator) {
+      navigator.wakeLock.request("screen").then((lock) => {
+        wakeLockRef.current = lock;
+      }).catch(() => {});
+    } else if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
+    }
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
+  }, [replay.playing]);
 
   // RC sound notification
   const lastRcCountRef = useRef(0);
