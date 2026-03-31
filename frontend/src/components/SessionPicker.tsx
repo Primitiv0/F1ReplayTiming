@@ -240,7 +240,7 @@ export default function SessionPicker() {
                       </span>
                     )}
                     <a
-                      href={`/live/${year}/${evt.round_number}?type=${code}`}
+                      href={`/live?year=${year}&round=${evt.round_number}&type=${code}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setNavigating(true);
@@ -265,7 +265,7 @@ export default function SessionPicker() {
                       </span>
                     )}
                     <a
-                      href={`/replay/${year}/${evt.round_number}?type=${code}`}
+                      href={`/replay?year=${year}&round=${evt.round_number}&type=${code}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setNavigating(true);
@@ -392,7 +392,7 @@ export default function SessionPicker() {
             {liveSession && liveSession.year === year && (
               <div className="mb-8 max-w-3xl mx-auto">
                 <a
-                  href={`/live/${liveSession.year}/${liveSession.round_number}?type=${liveSession.session_type}`}
+                  href={`/live?year=${liveSession.year}&round=${liveSession.round_number}&type=${liveSession.session_type}`}
                   onClick={() => setNavigating(true)}
                   className="block bg-f1-card border border-f1-red/50 rounded-xl overflow-hidden hover:border-f1-red transition-all group"
                 >
