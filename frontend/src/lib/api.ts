@@ -1,13 +1,15 @@
 import { getToken, clearToken } from "./auth";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// All API calls use relative URLs (same-origin).
+export const API_URL = "";
 
 export function apiUrl(path: string): string {
-  return `${API_URL}${path}`;
+  return path;
 }
 
 export function wsUrl(path: string): string {
-  const base = API_URL.replace(/^http/, "ws");
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const base = `${protocol}//${window.location.host}`;
   const token = getToken();
   const separator = path.includes("?") ? "&" : "?";
   const tokenParam = token ? `${separator}token=${encodeURIComponent(token)}` : "";

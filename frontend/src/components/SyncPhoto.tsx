@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getToken } from "@/lib/auth";
+import { apiUrl } from "@/lib/api";
 
 interface Props {
   year: number;
@@ -84,12 +85,11 @@ export default function SyncPhoto({
     formData.append("photo", file, file.name);
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const headers: HeadersInit = {};
       const token = getToken();
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const resp = await fetch(
-        `${API_URL}/api/sessions/${year}/${round}/sync-photo?type=${sessionType}`,
+        apiUrl(`/api/sessions/${year}/${round}/sync-photo?type=${sessionType}`),
         { method: "POST", body: formData, headers },
       );
 
@@ -151,12 +151,11 @@ export default function SyncPhoto({
     setError(null);
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const manualHeaders: HeadersInit = { "Content-Type": "application/json" };
       const manualToken = getToken();
       if (manualToken) manualHeaders["Authorization"] = `Bearer ${manualToken}`;
       const resp = await fetch(
-        `${API_URL}/api/sessions/${year}/${round}/sync-manual?type=${sessionType}`,
+        apiUrl(`/api/sessions/${year}/${round}/sync-manual?type=${sessionType}`),
         {
           method: "POST",
           headers: manualHeaders,

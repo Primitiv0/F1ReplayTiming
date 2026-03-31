@@ -122,7 +122,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               The frontend failed to reach the API server at:
             </p>
             <code className="block text-xs text-white bg-f1-dark border border-f1-border rounded px-3 py-2 mb-4 break-all">
-              {API_URL}
+              {API_URL || (typeof window !== "undefined" ? window.location.origin : "(same origin)")}
             </code>
             <div className="text-xs text-f1-muted space-y-2">
               <p>Common causes:</p>

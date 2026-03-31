@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
 import { useLiveSocket } from "@/hooks/useLiveSocket";
 import { useSettings } from "@/hooks/useSettings";
@@ -37,11 +37,15 @@ interface SessionData {
 }
 
 export default function LivePage() {
-  const params = useParams();
   const searchParams = useSearchParams();
-  const year = Number(params.year);
-  const round = Number(params.round);
+  const year = Number(searchParams.get("year"));
+  const round = Number(searchParams.get("round"));
   const sessionType = searchParams.get("type") || "R";
+
+  if (!year || !round) {
+    if (typeof window !== "undefined") window.location.href = "/";
+    return null;
+  }
   const speed = Number(searchParams.get("speed") || "10");
   const devMode = searchParams.get("dev") === "1";
 
@@ -144,6 +148,22 @@ export default function LivePage() {
   );
 
   const live = useLiveSocket(year, round, sessionType, speed, delayOffset);
+
+  // Wake Lock — prevent screen sleep during live sessions
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  useEffect(() => {
+    if ("wakeLock" in navigator) {
+      navigator.wakeLock.request("screen").then((lock) => {
+        wakeLockRef.current = lock;
+      }).catch(() => {});
+    }
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
+  }, []);
 
   const sessionTypeUpper = sessionType.toUpperCase();
   const isRace = sessionTypeUpper === "R" || sessionTypeUpper === "S";
