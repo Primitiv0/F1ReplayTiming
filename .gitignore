@@ -13,6 +13,7 @@ frontend/out/
 .fastf1-cache/
 /data/
 backend/data/sessions/
+backend/data/live_test/
 
 # Environment
 .env
