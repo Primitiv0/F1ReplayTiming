@@ -36,6 +36,37 @@ interface SessionData {
   }>;
 }
 
+const DELAY_MIN = -300;
+const DELAY_MAX = 10;
+const DELAY_TICK_PERCENT = (-DELAY_MIN / (DELAY_MAX - DELAY_MIN)) * 100;
+
+function clampDelay(value: number): number {
+  return Math.max(DELAY_MIN, Math.min(DELAY_MAX, Math.round(value * 2) / 2));
+}
+
+function formatDelayValue(s: number): string {
+  if (Math.abs(s) < 60) return s.toFixed(1);
+  const sign = s < 0 ? "−" : "+";
+  const abs = Math.abs(s);
+  const m = Math.floor(abs / 60);
+  const sec = Math.round(abs % 60);
+  return `${sign}${m}:${String(sec).padStart(2, "0")}`;
+}
+
+function formatDelayUnit(s: number): string {
+  return Math.abs(s) < 60 ? "seconds" : "min:sec";
+}
+
+function formatDelayShort(s: number): string {
+  if (s === 0) return "0s";
+  if (Math.abs(s) < 60) return `${s > 0 ? "+" : ""}${s}s`;
+  const sign = s < 0 ? "−" : "+";
+  const abs = Math.abs(s);
+  const m = Math.floor(abs / 60);
+  const sec = Math.round(abs % 60);
+  return sec === 0 ? `${sign}${m}m` : `${sign}${m}:${String(sec).padStart(2, "0")}`;
+}
+
 export default function LivePage() {
   const searchParams = useSearchParams();
   const year = Number(searchParams.get("year"));
@@ -617,7 +648,7 @@ export default function LivePage() {
                   : "bg-f1-dark border-f1-border text-f1-muted hover:text-white"
               }`}
             >
-              Delay: {delayOffset > 0 ? "+" : ""}{delayOffset}s
+              Delay: {formatDelayShort(delayOffset)}
             </button>
             {showDelaySlider && (<>
               {/* Modal backdrop */}
@@ -637,8 +668,8 @@ export default function LivePage() {
                 <div className="px-3 sm:px-5 py-3 sm:py-4 space-y-3 sm:space-y-4">
                   {/* Current value display */}
                   <div className="text-center">
-                    <span className="text-3xl font-extrabold text-white tabular-nums">{delayOffset.toFixed(1)}</span>
-                    <span className="text-lg text-f1-muted ml-1">seconds</span>
+                    <span className="text-3xl font-extrabold text-white tabular-nums">{formatDelayValue(delayOffset)}</span>
+                    <span className="text-lg text-f1-muted ml-1">{formatDelayUnit(delayOffset)}</span>
                   </div>
 
                   {/* Slider */}
@@ -646,8 +677,8 @@ export default function LivePage() {
                   <div className="relative">
                     <input
                       type="range"
-                      min={-60}
-                      max={10}
+                      min={DELAY_MIN}
+                      max={DELAY_MAX}
                       step={0.5}
                       value={delayOffset}
                       onChange={(e) => setDelayOffset(Number(e.target.value))}
@@ -656,42 +687,32 @@ export default function LivePage() {
                     {/* Zero tick — positioned absolutely over the slider */}
                     <div
                       className="absolute pointer-events-none z-20"
-                      style={{ left: `calc(${(60 / 70) * 100}% - 6px)`, top: "calc(50% + 3px)", transform: "translate(-50%, -50%)" }}
+                      style={{ left: `calc(${DELAY_TICK_PERCENT}% - 7px)`, top: "calc(50% + 3px)", transform: "translate(-50%, -50%)" }}
                     >
                       <div className="w-px h-4 bg-white/40" />
                     </div>
                   </div>
                   <div className="relative flex justify-between text-[10px] text-f1-muted mt-1">
-                    <span>-60s</span>
-                    <span className="absolute text-[10px]" style={{ left: `calc(${(60 / 70) * 100}% - 5px)`, transform: "translateX(-50%)" }}>0s</span>
-                    <span>+10s</span>
+                    <span>-5m</span>
+                    <span>0s</span>
                   </div>
 
                   {/* Quick adjust buttons */}
                   <div className="flex items-center justify-center gap-1">
                     {[
+                      { label: "-30s", delta: -30 },
                       { label: "-5s", delta: -5 },
                       { label: "-1s", delta: -1 },
                       { label: "-0.5s", delta: -0.5 },
-                    ].map(({ label, delta }) => (
-                      <button
-                        key={label}
-                        onClick={() => setDelayOffset(Math.max(-60, Math.min(10, Math.round((delayOffset + delta) * 2) / 2)))}
-                        className="px-2 py-1.5 bg-f1-dark border border-f1-border rounded text-[11px] font-bold text-f1-muted hover:text-white hover:border-blue-500/50 transition-colors"
-                      >
-                        {label}
-                      </button>
-                    ))}
-                    <span className="w-8" />
-                    {[
                       { label: "+0.5s", delta: 0.5 },
                       { label: "+1s", delta: 1 },
                       { label: "+5s", delta: 5 },
-                    ].map(({ label, delta }) => (
+                      { label: "+30s", delta: 30 },
+                    ].map(({ label, delta }, i) => (
                       <button
                         key={label}
-                        onClick={() => setDelayOffset(Math.max(-60, Math.min(10, Math.round((delayOffset + delta) * 2) / 2)))}
-                        className="px-2 py-1.5 bg-f1-dark border border-f1-border rounded text-[11px] font-bold text-f1-muted hover:text-white hover:border-blue-500/50 transition-colors"
+                        onClick={() => setDelayOffset(clampDelay(delayOffset + delta))}
+                        className={`px-1.5 py-1.5 bg-f1-dark border border-f1-border rounded text-[10px] font-bold text-f1-muted hover:text-white hover:border-blue-500/50 transition-colors ${i === 4 ? "ml-1.5" : ""}`}
                       >
                         {label}
                       </button>
@@ -725,7 +746,7 @@ export default function LivePage() {
                             const v = Math.abs(Number(raw));
                             if (isNaN(v)) return;
                             const sign = (document.getElementById("delay-sign-btn") as HTMLButtonElement)?.textContent === "−" ? -1 : 1;
-                            setDelayOffset(Math.max(-60, Math.min(10, Math.round(v * sign * 2) / 2)));
+                            setDelayOffset(clampDelay(v * sign));
                             (e.target as HTMLInputElement).value = "";
                           }
                         }}
@@ -739,7 +760,7 @@ export default function LivePage() {
                         const v = Math.abs(Number(input.value));
                         if (isNaN(v)) return;
                         const sign = (document.getElementById("delay-sign-btn") as HTMLButtonElement)?.textContent === "−" ? -1 : 1;
-                        setDelayOffset(Math.max(-60, Math.min(10, Math.round(v * sign * 2) / 2)));
+                        setDelayOffset(clampDelay(v * sign));
                         input.value = "";
                       }}
                       className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded transition-colors"
