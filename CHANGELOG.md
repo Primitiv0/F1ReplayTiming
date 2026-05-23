@@ -2,6 +2,14 @@
 
 All notable changes to F1 Replay Timing will be documented in this file.
 
+## 2.0.1
+
+### Improvements
+- **Broadcast delay up to 5 minutes** — Live Timing Offset slider now extends to -5m (previously -60s) to accommodate longer streaming-service lag, with M:SS formatting and ±30s quick-adjust buttons
+- **Configurable auto-precompute** — new `AUTO_PRECOMPUTE` env var controls which session types the background task fetches during race weekends. Accepts `off`, `race`, `race+qual` (default), or `all`. Self-hosters who don't watch practice can avoid downloading FP1/FP2/FP3 data; sessions outside the configured set are still available on-demand
+
+---
+
 ## 2.0.0
 
 ### Migrating from v1.x

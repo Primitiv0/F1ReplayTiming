@@ -204,7 +204,16 @@ docker compose exec f1timing python precompute.py 2024 2025 --skip-existing
 - A full race weekend (FP1, FP2, FP3, Qualifying, Race) takes **3-5 minutes**
 - A complete season (~24 rounds, all sessions) takes **2-3 hours**
 
-The app also includes a background task that automatically checks for and processes new session data on race weekends (Friday-Monday).
+**Background auto-precompute:** On race weekends (Fri–Mon), a background task checks every 30 minutes for new session data and processes it ahead of time so the first click is instant. Which session types it fetches is controlled by the `AUTO_PRECOMPUTE` env var:
+
+| Value | What it fetches |
+|---|---|
+| `off` | Nothing — everything is fetched on-demand the first time you click it |
+| `race` | Race + sprint |
+| `race+qual` | Race, sprint, qualifying, sprint qualifying — **default** |
+| `all` | Every session including practice |
+
+Sessions outside the configured set are still available — they're just processed on demand (with the usual 1–3 minute first-load wait) rather than pre-fetched.
 
 ### Manual setup (without Docker)
 
