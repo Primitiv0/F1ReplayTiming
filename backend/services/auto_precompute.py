@@ -3,10 +3,14 @@
 Runs every 30 minutes on Friday–Monday (race weekend days).
 Uses FastF1's schedule to find sessions that should have data available,
 checks if we've already processed them, and runs precompute if not.
+
+Which session types are auto-fetched is controlled by the AUTO_PRECOMPUTE
+env var. See get_allowed_session_types() for accepted values.
 """
 
 import asyncio
 import logging
+import os
 import traceback
 from datetime import datetime, timedelta, timezone
 
@@ -21,6 +25,37 @@ ACTIVE_DAYS = {0, 4, 5, 6}  # Mon, Fri, Sat, Sun
 # How long after a session's scheduled start before we try to fetch data
 DATA_AVAILABILITY_DELAY = timedelta(hours=0)
 
+# AUTO_PRECOMPUTE presets: env value -> set of session type codes to fetch.
+# Codes match SESSION_NAME_TO_TYPE in services/f1_data.py.
+_AUTO_PRECOMPUTE_PRESETS: dict[str, set[str]] = {
+    "off": set(),
+    "race": {"R", "S"},
+    "race+qual": {"R", "S", "Q", "SQ"},
+    "all": {"R", "S", "Q", "SQ", "FP1", "FP2", "FP3"},
+}
+_AUTO_PRECOMPUTE_DEFAULT = "race+qual"
+
+
+def get_allowed_session_types() -> set[str]:
+    """Return the set of session type codes that should be auto-precomputed.
+
+    Driven by the AUTO_PRECOMPUTE env var. Accepted values:
+      - off        : disable auto-precompute entirely
+      - race       : race + sprint
+      - race+qual  : race, sprint, qualifying, sprint qualifying (default)
+      - all        : every session including practice
+
+    Unknown values fall back to the default with a warning.
+    """
+    value = os.environ.get("AUTO_PRECOMPUTE", _AUTO_PRECOMPUTE_DEFAULT).strip().lower()
+    if value not in _AUTO_PRECOMPUTE_PRESETS:
+        logger.warning(
+            f"Unknown AUTO_PRECOMPUTE value '{value}', falling back to '{_AUTO_PRECOMPUTE_DEFAULT}'. "
+            f"Valid values: {sorted(_AUTO_PRECOMPUTE_PRESETS)}"
+        )
+        value = _AUTO_PRECOMPUTE_DEFAULT
+    return set(_AUTO_PRECOMPUTE_PRESETS[value])
+
 
 async def _check_and_process():
     """Check for new sessions and process any that have data available."""
@@ -31,6 +66,10 @@ async def _check_and_process():
 
     now = datetime.now(timezone.utc)
     year = now.year
+
+    allowed_types = get_allowed_session_types()
+    if not allowed_types:
+        return
 
     try:
         events = _fetch_schedule_sync(year)
@@ -51,6 +90,9 @@ async def _check_and_process():
             session_name = s["name"]
             session_type = SESSION_NAME_TO_TYPE.get(session_name)
             if not session_type:
+                continue
+
+            if session_type not in allowed_types:
                 continue
 
             # Skip if session hasn't had enough time for data to be available
