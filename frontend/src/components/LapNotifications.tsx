@@ -11,6 +11,9 @@ const MAX_BUBBLES = 6;
 // If more than this many laps complete in a single step, treat it as a seek
 // (skip/scrub) and don't fire a flood of bubbles.
 const MAX_PER_STEP = 5;
+// Delay (replay seconds) before a bubble fires, so it appears just after the
+// car crosses the line rather than just before.
+const FIRE_DELAY_S = 0.5;
 
 interface Bubble {
   id: number;
@@ -70,7 +73,7 @@ export default function LapNotifications({
       for (const [abbr, laps] of lapData) {
         let mx = 0;
         for (const [lapNum, entry] of laps) {
-          if (entry.completedAt !== null && entry.completedAt <= now && lapNum > mx) mx = lapNum;
+          if (entry.completedAt !== null && entry.completedAt <= now - FIRE_DELAY_S && lapNum > mx) mx = lapNum;
         }
         m.set(abbr, mx);
       }
@@ -104,7 +107,7 @@ export default function LapNotifications({
       let best: { lapNum: number; time: string } | null = null;
       for (const [lapNum, entry] of laps) {
         if (lapNum < 2 || entry.completedAt === null) continue;
-        if (entry.completedAt <= now && lapNum > seen) {
+        if (entry.completedAt <= now - FIRE_DELAY_S && lapNum > seen) {
           if (!best || lapNum > best.lapNum) best = { lapNum, time: entry.time };
         }
       }
