@@ -13,6 +13,7 @@ import TelemetryChart from "@/components/TelemetryChart";
 import SyncPhoto from "@/components/SyncPhoto";
 import PiPWindow from "@/components/PiPWindow";
 import LapAnalysisPanel from "@/components/LapAnalysisPanel";
+import LapNotifications from "@/components/LapNotifications";
 import type { SectorOverlay } from "@/lib/trackRenderer";
 import { Maximize, Minimize, ArrowUpRight } from "lucide-react";
 
@@ -494,6 +495,17 @@ export default function ReplayPage() {
                   </div>
                 </div>
               )}
+
+              {/* Qualifying lap-completion bubbles */}
+              <LapNotifications
+                enabled={settings.showLapNotifications}
+                isQualifying={isQualifying}
+                isRace={isRace}
+                lapData={lapData}
+                currentTime={replay.frame?.timestamp || 0}
+                currentLap={replay.frame?.lap || 0}
+                drivers={drivers}
+              />
 
               {/* Race Control toggle - desktop only, mobile has its own section */}
               <div className="absolute top-3 right-3 z-10 hidden sm:block">

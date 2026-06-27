@@ -25,6 +25,7 @@ export interface ReplaySettings {
   showPitFreeAir: boolean;
   showLastLapTime: boolean;
   showSectors: boolean;
+  showLapNotifications: boolean;
   highlightClose: boolean;
   useImperial: boolean;
   rcSound: boolean;
@@ -58,6 +59,7 @@ export const DEFAULTS: ReplaySettings = {
   showPitFreeAir: true,
   showLastLapTime: true,
   showSectors: true,
+  showLapNotifications: true,
   highlightClose: true,
   useImperial: false,
   rcSound: false,

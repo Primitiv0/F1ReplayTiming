@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { ReplayDriver } from "@/hooks/useReplaySocket";
 import { ReplaySettings } from "@/hooks/useSettings";
 import { TYRE_COLORS, TYRE_SHORT, TEAM_ABBR } from "@/lib/constants";
+import { lapColorClass, SectorMarkers } from "@/lib/lapTiming";
 
 export interface LapEntry {
   driver: string;
@@ -160,7 +161,7 @@ export default function Leaderboard({ drivers, highlightedDrivers, onDriverClick
               onClick={() => onDriverClick(drv.abbr)}
               className={`w-full flex items-center px-1 sm:px-2 py-1 hover:bg-white/5 transition-colors text-left ${
                 isHighlighted ? "bg-white/10" : ""
-              } ${drv.no_timing ? "opacity-40" : ""}`}
+              } ${drv.no_timing ? "opacity-40" : drv.knocked_out ? "opacity-50" : ""}`}
             >
               {/* Position - 20px mobile, 24px desktop */}
               {isLeader ? (
@@ -320,42 +321,7 @@ export default function Leaderboard({ drivers, highlightedDrivers, onDriverClick
                   </span>
                 );
 
-                // Parse time string to seconds for comparison
-                const toSecs = (t: string): number => {
-                  const p = t.split(":");
-                  return p.length === 2 ? parseInt(p[0]) * 60 + parseFloat(p[1]) : parseFloat(p[0]) || Infinity;
-                };
-                const lastSecs = toSecs(lastLapTime);
-
-                // Check personal best (this driver's completed laps up to now)
-                let personalBest = Infinity;
-                for (const [lapNum, entry] of driverLaps) {
-                  if (lapNum < 2) continue;
-                  if (!isRace && entry.completedAt !== null && entry.completedAt > currentTime) continue;
-                  if (isRace && lapNum > (currentLap || 0)) continue;
-                  const s = toSecs(entry.time);
-                  if (s < personalBest) personalBest = s;
-                }
-                const isPersonalBest = lastSecs <= personalBest + 0.0005;
-
-                // Purple: for races, use backend flag. For practice/qualifying, compute from all drivers' laps.
-                let isFastest = false;
-                if (isRace) {
-                  isFastest = drv.has_fastest_lap && isPersonalBest;
-                } else if (isPersonalBest && lapData) {
-                  let overallFastest = Infinity;
-                  for (const [, laps] of lapData) {
-                    for (const [lapNum, entry] of laps) {
-                      if (lapNum < 2) continue;
-                      if (entry.completedAt !== null && entry.completedAt > currentTime) continue;
-                      const s = toSecs(entry.time);
-                      if (s < overallFastest) overallFastest = s;
-                    }
-                  }
-                  isFastest = lastSecs <= overallFastest + 0.0005;
-                }
-
-                const color = isFastest ? "text-purple-400" : isPersonalBest ? "text-green-400" : "text-f1-muted";
+                const color = lapColorClass(lastLapTime, drv.abbr, lapData, currentTime, currentLap || 0, isRace, drv.has_fastest_lap);
 
                 return (
                   <span className={`w-[50px] sm:w-[60px] flex-shrink-0 text-[11px] sm:text-xs text-right tabular-nums ${color}`} title="Last lap time">
@@ -366,22 +332,7 @@ export default function Leaderboard({ drivers, highlightedDrivers, onDriverClick
 
               {/* Live sector indicators - fixed width (qualifying and practice) */}
               {!isRace && settings.showSectors && (
-                <span className="w-7 flex-shrink-0 flex items-center justify-center gap-[2px] mx-1">
-                  {[1, 2, 3].map((sn) => {
-                    const sec = drv.sectors?.find((s) => s.num === sn);
-                    const bg = sec
-                      ? sec.color === "purple" ? "bg-purple-500"
-                      : sec.color === "green" ? "bg-green-500"
-                      : "bg-yellow-500"
-                      : "bg-white/15";
-                    return (
-                      <span
-                        key={sn}
-                        className={`w-[6px] h-[14px] rounded-[1px] ${bg}`}
-                      />
-                    );
-                  })}
-                </span>
+                <SectorMarkers sectors={drv.sectors} className="w-7 flex-shrink-0 mx-1" />
               )}
 
               {/* Pit stops / chequered flag - 20px (race only) */}
