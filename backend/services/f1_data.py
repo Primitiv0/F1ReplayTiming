@@ -1009,6 +1009,24 @@ def _get_driver_positions_by_time_sync(
         except Exception as e:
             logger.error(f"Failed to parse qualifying phases: {e}")
 
+    # Per-driver highest qualifying segment reached (1/2/3), read straight from
+    # the results Q1/Q2/Q3 best-lap columns. Used to grey out drivers once a
+    # later segment begins (they keep their position and posted time).
+    driver_reached_phase: dict[str, int] = {}
+    if is_quali:
+        try:
+            for _, row in session.results.iterrows():
+                abbr = str(row.get("Abbreviation", ""))
+                if not abbr:
+                    continue
+                reached = 0
+                for idx, col in enumerate(("Q1", "Q2", "Q3"), start=1):
+                    if col in row and pd.notna(row.get(col)):
+                        reached = idx
+                driver_reached_phase[abbr] = reached
+        except Exception as e:
+            logger.error(f"Failed to compute qualifying reached phases: {e}")
+
     def _get_quali_phase(t_sec: float) -> dict | None:
         """Get qualifying phase info at time t_sec."""
         if not quali_intervals:
@@ -1473,6 +1491,15 @@ def _get_driver_positions_by_time_sync(
                     d["best_lap_time"] = None
                     d["gap"] = "No time"
                     d["no_timing"] = False
+
+            # Qualifying: flag drivers knocked out in an earlier segment so the
+            # frontend can dim them. They keep their position and posted time.
+            if is_quali:
+                phase = _get_quali_phase(t_sec)
+                phase_idx = {"Q1": 1, "Q2": 2, "Q3": 3}.get(phase["phase"], 1) if phase else 1
+                for d in frame_drivers:
+                    reached = driver_reached_phase.get(d["abbr"], 0)
+                    d["knocked_out"] = phase_idx >= 2 and reached < phase_idx
 
             # Add live sector indicators for qualifying and practice
             if session_type in ("Q", "SQ", "FP1", "FP2", "FP3"):
