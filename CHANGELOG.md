@@ -2,6 +2,12 @@
 
 All notable changes to F1 Replay Timing will be documented in this file.
 
+## 2.0.3
+
+### Fixes
+
+- **Live leaderboard column overflow** — the live leaderboard column spacing fixed on 1080x1920 resolution where tyre age was overflowing. (reported by [@meekha3l](https://github.com/meekha3l))
+
 ## 2.0.2
 
 ### Improvements
