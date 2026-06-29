@@ -18,12 +18,13 @@ import type { SectorOverlay } from "@/lib/trackRenderer";
 import { Maximize, Minimize, ArrowUpRight } from "lucide-react";
 
 interface TrackData {
-  track_points: { x: number; y: number }[];
+  track_points: { x: number; y: number; z?: number }[];
   rotation: number;
   circuit_name: string;
   sector_boundaries?: { s1_end: number; s2_end: number; total: number } | null;
   corners?: { x: number; y: number; number: number; letter: string; angle: number }[] | null;
   marshal_sectors?: { x: number; y: number; number: number }[] | null;
+  elevation?: { range_m: number } | null;
 }
 
 interface SessionData {
@@ -628,6 +629,8 @@ export default function ReplayPage() {
                 corners={settings.showCorners ? trackData?.corners : null}
                 marshalSectors={trackData?.marshal_sectors}
                 sectorFlags={replay.frame?.sector_flags}
+                showElevation={settings.showElevation}
+                elevationRangeM={trackData?.elevation?.range_m ?? null}
               />
 
               {/* Telemetry now in bottom drawer */}
@@ -1055,6 +1058,8 @@ export default function ReplayPage() {
                     corners={settings.showCorners ? trackData?.corners : null}
                     marshalSectors={trackData?.marshal_sectors}
                     sectorFlags={replay.frame?.sector_flags}
+                    showElevation={settings.showElevation}
+                    elevationRangeM={trackData?.elevation?.range_m ?? null}
                   />
                 </div>
               )}
