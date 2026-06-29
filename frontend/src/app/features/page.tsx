@@ -25,6 +25,19 @@ export default function FeaturesPage() {
 
       <div className="max-w-3xl mx-auto px-6 py-12 space-y-10">
 
+        {/* Session Picker */}
+        <section className="bg-f1-card border border-f1-border rounded-xl p-6">
+          <h2 className="text-lg font-bold text-white mb-1">Session Picker</h2>
+          <p className="text-xs font-bold text-f1-red uppercase tracking-wider mb-3">Home page</p>
+          <p className="text-f1-text leading-relaxed">
+            A green dot
+            <span className="inline-block align-middle w-1.5 h-1.5 rounded-full bg-green-400 mx-1.5" />
+            next to a session means it has already been downloaded and will play instantly. Hover over
+            a session to see its stored size. Sessions without a dot are processed on demand the first
+            time you open them.
+          </p>
+        </section>
+
         {/* Track Map & Car Positions */}
         <section className="bg-f1-card border border-f1-border rounded-xl p-6">
           <h2 className="text-lg font-bold text-white mb-1">Track Map</h2>
