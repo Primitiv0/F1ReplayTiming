@@ -7,6 +7,8 @@ interface SessionEntry {
   name: string;
   date_utc: string | null;
   available: boolean;
+  precomputed?: boolean;
+  size_bytes?: number;
 }
 
 interface LiveSessionInfo {
@@ -81,6 +83,13 @@ const SESSION_LABELS: Record<string, string> = {
   "Practice 2": "FP2",
   "Practice 3": "FP3",
 };
+
+function formatSize(bytes?: number): string | null {
+  if (!bytes || bytes <= 0) return null;
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 function formatLocalTime(dateUtc: string | null): { dayDate: string; time: string } | null {
   if (!dateUtc) return null;
@@ -257,6 +266,10 @@ export default function SessionPicker() {
                 );
               }
               if (session.available) {
+                const sizeLabel = formatSize(session.size_bytes);
+                const tooltip = session.precomputed
+                  ? `Downloaded${sizeLabel ? ` · ${sizeLabel}` : ""}`
+                  : "Not downloaded — will process when opened";
                 return (
                   <div key={session.name} className="flex flex-col items-center">
                     {localTime && (
@@ -270,9 +283,16 @@ export default function SessionPicker() {
                         e.stopPropagation();
                         setNavigating(true);
                       }}
-                      className="px-3 py-1.5 bg-f1-border text-white text-xs font-bold rounded hover:bg-f1-red transition-colors"
+                      title={tooltip}
+                      className="px-3 py-1.5 bg-f1-border text-white text-xs font-bold rounded hover:bg-f1-red transition-colors flex items-center gap-1.5"
                     >
                       {session.name}
+                      {session.precomputed && (
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"
+                          aria-label="Downloaded"
+                        />
+                      )}
                     </a>
                   </div>
                 );

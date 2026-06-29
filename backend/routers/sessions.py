@@ -4,7 +4,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query, HTTPException
-from services.storage import get_json, put_json
+from services.storage import get_json, put_json, list_sizes
 from services.process import ensure_session_data
 
 logger = logging.getLogger(__name__)
@@ -39,8 +39,16 @@ def _build_events(year: int) -> dict:
     now = datetime.now(timezone.utc)
     last_past_idx = None
 
+    # One storage listing for the whole season; used to mark which sessions
+    # have already been pre-computed (replay.json present) and their total size.
+    try:
+        sizes = list_sizes(f"sessions/{year}")
+    except Exception:
+        sizes = {}
+
     for i, evt in enumerate(events):
         has_past_session = False
+        rnd = evt.get("round_number")
         for session in evt.get("sessions", []):
             date_str = session.get("date_utc")
             if date_str:
@@ -56,6 +64,21 @@ def _build_events(year: int) -> dict:
                     session["available"] = False
             else:
                 session["available"] = False
+
+            # Pre-compute status + stored size (replay.json is the definitive
+            # marker that a session has been fully processed).
+            code = SESSION_NAME_TO_TYPE.get(session.get("name", ""))
+            if code and rnd is not None:
+                prefix = f"sessions/{year}/{rnd}/{code}/"
+                precomputed = (prefix + "replay.json") in sizes
+                session["precomputed"] = precomputed
+                session["size_bytes"] = (
+                    sum(v for k, v in sizes.items() if k.startswith(prefix))
+                    if precomputed else 0
+                )
+            else:
+                session["precomputed"] = False
+                session["size_bytes"] = 0
 
         # Normalize date_utc to ISO 8601 with "Z" so the browser
         # correctly interprets them as UTC and converts to local time

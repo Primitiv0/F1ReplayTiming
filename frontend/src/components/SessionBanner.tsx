@@ -56,6 +56,7 @@ const WEATHER_SETTINGS: { key: keyof ReplaySettings; label: string }[] = [
 const TRACK_MAP_SETTINGS: { key: keyof ReplaySettings; label: string }[] = [
   { key: "showDriverNames", label: "Driver names on track" },
   { key: "showCorners", label: "Corner numbers" },
+  { key: "showElevation", label: "Elevation" },
 ];
 
 const OTHER_SETTINGS: { key: keyof ReplaySettings; label: string; hint?: string }[] = [

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { drawTrack, drawDrivers, TrackPoint, DriverMarker, SectorOverlay, Corner, MarshalSector, SectorFlag } from "@/lib/trackRenderer";
+import { drawTrack, drawDrivers, TrackPoint, DriverMarker, SectorOverlay, Corner, MarshalSector, SectorFlag, ELEVATION_FULL_SCALE_M } from "@/lib/trackRenderer";
 
 interface Props {
   trackPoints: TrackPoint[];
@@ -15,6 +15,8 @@ interface Props {
   corners?: Corner[] | null;
   marshalSectors?: MarshalSector[] | null;
   sectorFlags?: SectorFlag[] | null;
+  showElevation?: boolean;
+  elevationRangeM?: number | null;
 }
 
 // Longer than the 500ms frame interval so the dot is always still moving
@@ -35,7 +37,7 @@ function getCanvasWindow(canvas: HTMLCanvasElement | null): Window {
 }
 
 
-export default function TrackCanvas({ trackPoints, rotation, trackStatus = "green", drivers, highlightedDrivers, playbackSpeed = 1, showDriverNames = true, sectorOverlay = null, corners = null, marshalSectors = null, sectorFlags = null }: Props) {
+export default function TrackCanvas({ trackPoints, rotation, trackStatus = "green", drivers, highlightedDrivers, playbackSpeed = 1, showDriverNames = true, sectorOverlay = null, corners = null, marshalSectors = null, sectorFlags = null, showElevation = false, elevationRangeM = null }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const sizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -56,6 +58,8 @@ export default function TrackCanvas({ trackPoints, rotation, trackStatus = "gree
   marshalSectorsRef.current = marshalSectors;
   const sectorFlagsRef = useRef(sectorFlags);
   sectorFlagsRef.current = sectorFlags;
+  const showElevationRef = useRef(showElevation);
+  showElevationRef.current = showElevation;
 
   // Update targets when drivers prop changes
   useEffect(() => {
@@ -124,7 +128,7 @@ export default function TrackCanvas({ trackPoints, rotation, trackStatus = "gree
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      drawTrack(ctx, trackPoints, w, h, rotation, trackStatusRef.current, sectorOverlayRef.current, cornersRef.current, marshalSectorsRef.current, sectorFlagsRef.current);
+      drawTrack(ctx, trackPoints, w, h, rotation, trackStatusRef.current, sectorOverlayRef.current, cornersRef.current, marshalSectorsRef.current, sectorFlagsRef.current, showElevationRef.current);
 
       const now = performance.now();
       const curr = driversRef.current;
@@ -170,9 +174,28 @@ export default function TrackCanvas({ trackPoints, rotation, trackStatus = "gree
     return () => observer.disconnect();
   }, []);
 
+  const showElevationLegend = showElevation && trackPoints.some((p) => typeof p.z === "number");
+
   return (
-    <div ref={containerRef} className="w-full h-full bg-f1-dark">
+    <div ref={containerRef} className="w-full h-full bg-f1-dark relative">
       <canvas ref={canvasRef} className="w-full h-full" />
+      {showElevationLegend && (
+        <div className="absolute bottom-16 left-3 flex items-end gap-2 pointer-events-none select-none">
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] text-f1-muted leading-none mb-1">{ELEVATION_FULL_SCALE_M}m</span>
+            <div
+              className="w-2 h-20 rounded-sm border border-black/30"
+              style={{ background: "linear-gradient(to top, #33384a, #6fb7d6, #ffffff)" }}
+            />
+            <span className="text-[9px] text-f1-muted leading-none mt-1">0m</span>
+          </div>
+          {typeof elevationRangeM === "number" && (
+            <span className="text-[10px] font-bold text-f1-text leading-none mb-1">
+              Elevation Δ {elevationRangeM}m
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

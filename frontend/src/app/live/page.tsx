@@ -266,8 +266,9 @@ export default function LivePage() {
     if (!isRace) w += 18;
     if (isRace && settings.showGridChange) w += 24;
     if (!isRace && settings.showBestLapTime) w += 60; // best lap time column
-    if (settings.showGapToLeader) w += 56;
-    if (isQualifying && settings.showSectors) w += 36;
+    if (settings.showLastLapTime) w += 60; // last lap time column
+    if (settings.showGapToLeader) w += 56 + (!isRace ? 8 : 0); // extra margin between lap time and gap in practice/qualifying
+    if (!isRace && settings.showSectors) w += 36; // sector indicators (practice + qualifying)
     if (isRace && settings.showPitStops) w += 24;
     if (isRace && settings.showTyreHistory) w += 36;
     if (settings.showTyreType) w += 24;
