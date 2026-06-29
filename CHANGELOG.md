@@ -2,9 +2,11 @@
 
 All notable changes to F1 Replay Timing will be documented in this file.
 
-## 2.0.3
+## 2.1
 
 ### Improvements
+
+- **Track elevation overlay** The track map can now colour the circuit by elevation, from dark (lowest point) to bright (highest), on a fixed scale so flat tracks look flat and hilly tracks stand out. Toggle in Settings>Track Map. Requires re-compute for existing sessions. (suggested by [@db-can](https://github.com/db-can))
 
 - **Downloaded session marker** A green dot now appears next to sessions that are already processed and ready to play instantly. Hover over a session to see its stored size. (suggested by [@avergeichik](https://github.com/avergeichik))
 

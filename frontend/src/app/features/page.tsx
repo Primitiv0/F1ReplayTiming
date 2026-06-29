@@ -50,6 +50,29 @@ export default function FeaturesPage() {
           </p>
         </section>
 
+        {/* Track Elevation */}
+        <section className="bg-f1-card border border-f1-border rounded-xl p-6">
+          <h2 className="text-lg font-bold text-white mb-1">Track Elevation</h2>
+          <p className="text-xs font-bold text-f1-red uppercase tracking-wider mb-3">All sessions</p>
+          <p className="text-f1-text leading-relaxed mb-4">
+            The track line can be coloured by elevation, derived from the same GPS telemetry as the map.
+            The lowest point of the lap is dark and the highest is bright:
+          </p>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-xs text-f1-muted">Low</span>
+            <div
+              className="h-3 flex-1 max-w-xs rounded-sm border border-black/30"
+              style={{ background: "linear-gradient(to right, #33384a, #6fb7d6, #ffffff)" }}
+            />
+            <span className="text-xs text-f1-muted">High</span>
+          </div>
+          <p className="text-f1-text leading-relaxed">
+            Colours use a fixed scale across every circuit rather than each track&apos;s own range, so a flat
+            circuit stays uniformly dark while a hilly one shows a strong gradient. A legend on the map shows
+            the total elevation change. Toggle it in Settings &gt; Track Map.
+          </p>
+        </section>
+
         {/* Driver Leaderboard */}
         <section className="bg-f1-card border border-f1-border rounded-xl p-6">
           <h2 className="text-lg font-bold text-white mb-1">Driver Leaderboard</h2>

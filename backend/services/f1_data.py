@@ -268,6 +268,20 @@ def _get_track_data_sync(year: int, round_num: int, session_type: str = "R") -> 
     x = telemetry["X"].values
     y = telemetry["Y"].values
 
+    # Elevation (Z is in 1/10 m). Store each point's height in metres above the
+    # track's lowest point, plus the total range, so the frontend can colour the
+    # line on a fixed absolute scale (flat tracks stay flat-looking).
+    z_rel_m = None
+    elevation = None
+    if "Z" in telemetry.columns:
+        z = telemetry["Z"].values.astype(float)
+        if len(z) > 0 and not np.isnan(z).all():
+            z_min = float(np.nanmin(z))
+            z_max = float(np.nanmax(z))
+            z_rel = (np.nan_to_num(z, nan=z_min) - z_min) / 10.0
+            z_rel_m = [round(float(v), 2) for v in z_rel]
+            elevation = {"range_m": round((z_max - z_min) / 10.0, 1)}
+
     # Normalize to 0-1 range for frontend flexibility
     x_min, x_max = float(x.min()), float(x.max())
     y_min, y_max = float(y.min()), float(y.max())
@@ -333,8 +347,13 @@ def _get_track_data_sync(year: int, round_num: int, session_type: str = "R") -> 
             logger.warning(f"Could not extract marshal sector data: {e}")
             marshal_sectors = None
 
+    if z_rel_m is not None:
+        track_points = [{"x": px, "y": py, "z": pz} for px, py, pz in zip(x_norm, y_norm, z_rel_m)]
+    else:
+        track_points = [{"x": px, "y": py} for px, py in zip(x_norm, y_norm)]
+
     return {
-        "track_points": [{"x": px, "y": py} for px, py in zip(x_norm, y_norm)],
+        "track_points": track_points,
         "rotation": rotation,
         "circuit_name": str(session.event.get("Location", "")),
         # Raw normalization params so driver positions use the same reference
@@ -342,6 +361,7 @@ def _get_track_data_sync(year: int, round_num: int, session_type: str = "R") -> 
         "sector_boundaries": sector_boundaries,
         "corners": corners,
         "marshal_sectors": marshal_sectors,
+        "elevation": elevation,
     }
 
 

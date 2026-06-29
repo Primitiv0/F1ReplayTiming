@@ -30,6 +30,7 @@ export interface ReplaySettings {
   useImperial: boolean;
   rcSound: boolean;
   showCorners: boolean;
+  showElevation: boolean;
   highContrast: boolean;
   showAllPanels: boolean;
 }
@@ -64,6 +65,7 @@ export const DEFAULTS: ReplaySettings = {
   useImperial: false,
   rcSound: false,
   showCorners: true,
+  showElevation: false,
   highContrast: false,
   showAllPanels: false,
 };
