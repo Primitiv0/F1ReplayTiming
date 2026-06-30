@@ -2,6 +2,19 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useApi } from "@/hooks/useApi";
+import { getToken } from "@/lib/auth";
+import { apiUrl } from "@/lib/api";
+
+interface SessionMenu {
+  x: number;
+  y: number;
+  href: string;
+  label: string;
+  key: string;
+  year: number;
+  round: number;
+  code: string;
+}
 
 interface SessionEntry {
   name: string;
@@ -149,6 +162,92 @@ export default function SessionPicker() {
   const latestRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Right-click / long-press menu on a session pill
+  const [ctxMenu, setCtxMenu] = useState<SessionMenu | null>(null);
+  const [reprocessing, setReprocessing] = useState<Set<string>>(new Set());
+  const [reprocessModal, setReprocessModal] = useState<{ label: string; key: string; state: "running" | "done" | "error"; message: string } | null>(null);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressClickRef = useRef(false);
+  const ctxMenuRef = useRef<HTMLDivElement>(null);
+
+  function authFetch(path: string, init?: RequestInit) {
+    const token = getToken();
+    return fetch(apiUrl(path), {
+      ...init,
+      headers: {
+        ...(init?.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  }
+
+  function clearReprocessing(key: string) {
+    setReprocessing((p) => {
+      const n = new Set(p);
+      n.delete(key);
+      return n;
+    });
+  }
+
+  async function reprocess(m: SessionMenu) {
+    setCtxMenu(null);
+    setReprocessing((p) => new Set(p).add(m.key));
+    setReprocessModal({ label: m.label, key: m.key, state: "running", message: "Starting…" });
+    const finish = (state: "done" | "error", message: string) => {
+      clearReprocessing(m.key);
+      setReprocessModal((prev) => (prev && prev.key === m.key ? { ...prev, state, message } : prev));
+    };
+    try {
+      const res = await authFetch(
+        `/api/sessions/${m.year}/${m.round}/reprocess?type=${m.code}`,
+        { method: "POST" },
+      );
+      if (!res.ok) throw new Error();
+      const poll = async () => {
+        try {
+          const s = await authFetch(
+            `/api/sessions/${m.year}/${m.round}/reprocess/status?type=${m.code}`,
+          ).then((r) => r.json());
+          if (s.state === "running") {
+            setReprocessModal((prev) => (prev && prev.key === m.key ? { ...prev, message: s.message || prev.message } : prev));
+            setTimeout(poll, 1500);
+            return;
+          }
+          finish(
+            s.state === "done" ? "done" : "error",
+            s.message || (s.state === "done" ? "Reprocess complete" : "Reprocess failed"),
+          );
+        } catch {
+          finish("error", "Lost connection while reprocessing.");
+        }
+      };
+      setTimeout(poll, 1500);
+    } catch {
+      finish("error", "Failed to start reprocessing.");
+    }
+  }
+
+  // Close the context menu on outside click, scroll, resize, or Escape
+  useEffect(() => {
+    if (!ctxMenu) return;
+    // Only close on clicks OUTSIDE the menu, so item clicks still register.
+    const onDown = (e: MouseEvent) => {
+      if (ctxMenuRef.current && !ctxMenuRef.current.contains(e.target as Node)) setCtxMenu(null);
+    };
+    const onClose = () => setCtxMenu(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setCtxMenu(null); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("scroll", onClose, true);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onClose);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("scroll", onClose, true);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onClose);
+    };
+  }, [ctxMenu]);
+
   const { data: seasonsData } = useApi<SeasonsResponse>("/api/seasons");
   const { data: eventsData, loading: eventsLoading } = useApi<EventsResponse>(
     `/api/seasons/${year}/events`,
@@ -268,8 +367,13 @@ export default function SessionPicker() {
               if (session.available) {
                 const sizeLabel = formatSize(session.size_bytes);
                 const tooltip = session.precomputed
-                  ? `Downloaded${sizeLabel ? ` · ${sizeLabel}` : ""}`
+                  ? `Downloaded${sizeLabel ? ` · ${sizeLabel}` : ""} — right-click for options`
                   : "Not downloaded — will process when opened";
+                const href = `/replay?year=${year}&round=${evt.round_number}&type=${code}`;
+                const sKey = `${year}_${evt.round_number}_${code}`;
+                const busy = reprocessing.has(sKey);
+                const openMenu = (x: number, y: number) =>
+                  setCtxMenu({ x, y, href, label: session.name, key: sKey, year, round: evt.round_number, code });
                 return (
                   <div key={session.name} className="flex flex-col items-center">
                     {localTime && (
@@ -278,21 +382,28 @@ export default function SessionPicker() {
                       </span>
                     )}
                     <a
-                      href={`/replay?year=${year}&round=${evt.round_number}&type=${code}`}
+                      href={href}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (suppressClickRef.current) { suppressClickRef.current = false; e.preventDefault(); return; }
                         setNavigating(true);
                       }}
+                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); openMenu(e.clientX, e.clientY); }}
+                      onTouchStart={(e) => {
+                        const t = e.touches[0];
+                        longPressRef.current = setTimeout(() => { suppressClickRef.current = true; openMenu(t.clientX, t.clientY); }, 500);
+                      }}
+                      onTouchEnd={() => { if (longPressRef.current) clearTimeout(longPressRef.current); }}
+                      onTouchMove={() => { if (longPressRef.current) clearTimeout(longPressRef.current); }}
                       title={tooltip}
-                      className="px-3 py-1.5 bg-f1-border text-white text-xs font-bold rounded hover:bg-f1-red transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1.5 bg-f1-border text-white text-xs font-bold rounded hover:bg-f1-red transition-colors flex items-center gap-1.5 select-none"
                     >
                       {session.name}
-                      {session.precomputed && (
-                        <span
-                          className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0"
-                          aria-label="Downloaded"
-                        />
-                      )}
+                      {busy ? (
+                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin flex-shrink-0" aria-label="Reprocessing" />
+                      ) : session.precomputed ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" aria-label="Downloaded" />
+                      ) : null}
                     </a>
                   </div>
                 );
@@ -332,6 +443,78 @@ export default function SessionPicker() {
           </div>
         </div>
       )}
+
+      {/* Session context menu (right-click / long-press) */}
+      {ctxMenu && (
+        <div
+          ref={ctxMenuRef}
+          className="fixed z-50 min-w-[11rem] bg-f1-card border border-f1-border rounded-lg shadow-xl py-1 text-sm"
+          style={{ top: ctxMenu.y, left: ctxMenu.x }}
+        >
+          <button
+            onClick={() => { setNavigating(true); window.location.href = ctxMenu.href; }}
+            className="block w-full text-left px-4 py-2 text-white hover:bg-white/5 transition-colors"
+          >
+            Open
+          </button>
+          <button
+            onClick={() => { window.open(ctxMenu.href, "_blank", "noopener,noreferrer"); setCtxMenu(null); }}
+            className="block w-full text-left px-4 py-2 text-white hover:bg-white/5 transition-colors"
+          >
+            Open in new tab
+          </button>
+          <button
+            onClick={() => { window.open(ctxMenu.href, "_blank", "noopener,noreferrer,width=1280,height=820"); setCtxMenu(null); }}
+            className="block w-full text-left px-4 py-2 text-white hover:bg-white/5 transition-colors"
+          >
+            Open in new window
+          </button>
+          <div className="my-1 border-t border-f1-border" />
+          <button
+            onClick={() => reprocess(ctxMenu)}
+            className="block w-full text-left px-4 py-2 text-white hover:bg-white/5 transition-colors"
+          >
+            ↻ Reprocess
+          </button>
+        </div>
+      )}
+
+      {/* Reprocess progress modal */}
+      {reprocessModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-f1-card border border-f1-border rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-white font-bold text-base mb-1">Reprocessing {reprocessModal.label}</h3>
+            {reprocessModal.state === "running" && (
+              <>
+                <p className="text-f1-muted text-sm mb-4">
+                  Rebuilding this session&apos;s data. This usually takes 1–3 minutes. You can close this and it will keep running.
+                </p>
+                <div className="flex items-center gap-3">
+                  <span className="w-5 h-5 border-2 border-f1-muted border-t-f1-red rounded-full animate-spin flex-shrink-0" />
+                  <span className="text-white text-sm">{reprocessModal.message}</span>
+                </div>
+              </>
+            )}
+            {reprocessModal.state === "done" && (
+              <p className="text-green-400 text-sm mb-2">
+                Done. Reopen the session to see the updated data.
+              </p>
+            )}
+            {reprocessModal.state === "error" && (
+              <p className="text-red-400 text-sm mb-2">{reprocessModal.message}</p>
+            )}
+            <div className="flex justify-end mt-5">
+              <button
+                onClick={() => setReprocessModal(null)}
+                className="px-4 py-2 bg-f1-border text-white text-sm font-bold rounded hover:bg-f1-red transition-colors"
+              >
+                {reprocessModal.state === "running" ? "Hide" : "Close"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-f1-card border-b border-f1-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8 flex items-center gap-3 sm:gap-4">
