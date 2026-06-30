@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Query, HTTPException
 from services.storage import get_json, put_json, list_sizes
-from services.process import ensure_session_data
+from services.process import ensure_session_data, start_reprocess, get_reprocess_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["sessions"])
@@ -176,3 +176,19 @@ async def get_session(
         status_code=404,
         detail=f"Session data not available for {year} Round {round_num} ({type}).",
     )
+
+
+@router.post("/sessions/{year}/{round_num}/reprocess")
+async def reprocess_session(year: int, round_num: int, type: str = Query("R")):
+    """Re-run processing for a session, overwriting the stored data.
+
+    Auth is enforced by the global /api middleware. Runs in the background;
+    poll the status endpoint for completion.
+    """
+    state = await start_reprocess(year, round_num, type)
+    return {"state": state}
+
+
+@router.get("/sessions/{year}/{round_num}/reprocess/status")
+async def reprocess_session_status(year: int, round_num: int, type: str = Query("R")):
+    return get_reprocess_status(year, round_num, type)
