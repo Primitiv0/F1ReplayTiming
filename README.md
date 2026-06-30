@@ -200,6 +200,14 @@ docker compose exec f1timing python precompute.py 2025 --skip-existing
 docker compose exec f1timing python precompute.py 2024 2025 --skip-existing
 ```
 
+**Re-computing a session:** Some updates (noted in the changelog as "requires re-compute") add new data to existing sessions. Re-run the same command **without** `--skip-existing` and it overwrites the stored session — that is the re-compute:
+
+```bash
+docker compose exec f1timing python precompute.py 2026 --round 1 --session R
+```
+
+This reprocesses from FastF1's local cache where available, so it usually does not re-download. To force a fresh pull from FastF1 (e.g. to pick up data F1 has since corrected), clear that session from `FASTF1_CACHE_DIR` first.
+
 **Timing estimates:**
 - A single session (e.g. one race) takes **1-3 minutes**
 - A full race weekend (FP1, FP2, FP3, Qualifying, Race) takes **3-5 minutes**

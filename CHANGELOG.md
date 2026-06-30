@@ -2,6 +2,12 @@
 
 All notable changes to F1 Replay Timing will be documented in this file.
 
+## 2.1.1
+
+### Improvements
+
+- **Reprocess a session from the picker** Right-click (or long-press on touch) a session on the home page for a menu to open it in a new tab or window, or reprocess its data. Reprocess rebuilds the stored session, which is required for some new features (eg track elevation). Alternative to using CLI.
+
 ## 2.1
 
 ### Improvements
